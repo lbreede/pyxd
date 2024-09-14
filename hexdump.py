@@ -1,12 +1,12 @@
 import argparse
-import sys
 import math
+import sys
 
 
-def read_file(infile: str) -> str:
+def read_file(infile: str) -> bytes:
     if infile == "-":
-        return sys.stdin.read()
-    with open(infile, "r", encoding="utf-8") as fp:
+        return sys.stdin.buffer.read()
+    with open(infile, "rb") as fp:
         return fp.read()
 
 
@@ -29,29 +29,34 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def hexdump(data: str, cols: int, groupsize: bytes, uppercase: bool) -> str:
-    length = len(data)
+def hexdump(
+    data: bytes, cols: int, groupsize: int, uppercase: bool, fp=sys.stdout
+) -> None:
+    # length = len(data)
     width = 10 + cols * 2 + math.ceil(cols / groupsize)
 
-    output = ""
-    for i in range(0, length, cols):
+    for i in range(0, len(data), cols):
         row_data = data[i : i + cols]
 
         row = f"{i:08x}: "
+        # print(row_data)
 
+        # print(row_data)
         for j in range(0, len(row_data), groupsize):
             row += (
                 "".join(
-                    f"{ord(x):02X}" if uppercase else f"{ord(x):02x}"
+                    f"{x:02X}" if uppercase else f"{x:02x}"
                     for x in row_data[j : j + groupsize]
                 )
                 + " "
             )
 
         row += " " * (width - len(row))
-        row += " " + row_data.replace("\n", ".").replace("\r", ".")
-        output += row + "\n"
-    return output
+        row += " " + row_data.replace(b"\x00", b".").replace(b"\x0a", b".").decode(
+            "utf-8"
+        )
+        fp.write(row + "\n")
+        # print(row)
 
 
 def main() -> None:
@@ -60,8 +65,7 @@ def main() -> None:
 
     cols = min(args.cols, 256)
     groupsize = min(args.groupsize, cols)
-    dump = hexdump(data, cols, groupsize, args.u)
-    print(dump)
+    hexdump(data, cols, groupsize, args.u)
 
 
 if __name__ == "__main__":
